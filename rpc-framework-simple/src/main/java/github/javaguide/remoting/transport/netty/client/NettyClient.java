@@ -1,9 +1,12 @@
 package github.javaguide.remoting.transport.netty.client;
 
+import github.javaguide.extension.ExtensionLoader;
+import github.javaguide.registry.ServiceDiscovery;
 import github.javaguide.remoting.dto.RpcRequest;
 import github.javaguide.remoting.dto.RpcResponse;
 import github.javaguide.remoting.transport.netty.codec.kyro.NettyKryoDecoder;
 import github.javaguide.remoting.transport.netty.codec.kyro.NettyKryoEncoder;
+import github.javaguide.serialize.Serializer;
 import github.javaguide.serialize.kyro.KryoSerializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -14,40 +17,47 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
- * 用于初始化 和 关闭 Bootstrap 对象
+ * initialize and close Bootstrap object
  *
  * @author shuang.kou
  * @createTime 2020年05月29日 17:51:00
  */
 @Slf4j
 public final class NettyClient {
-    private static Bootstrap bootstrap;
-    private static EventLoopGroup eventLoopGroup;
+    private final Bootstrap bootstrap;
+    private final EventLoopGroup eventLoopGroup;
 
-    // 初始化相关资源比如 EventLoopGroup、Bootstrap
-    static {
+    // initialize resources such as EventLoopGroup, Bootstrap
+    public NettyClient() {
         eventLoopGroup = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
-        KryoSerializer kryoSerializer = new KryoSerializer();
+        Serializer kryoSerializer = ExtensionLoader.getExtensionLoader(Serializer.class).getExtension("kyro");
         bootstrap.group(eventLoopGroup)
                 .channel(NioSocketChannel.class)
-                //连接的超时时间，超过这个时间还是建立不上的话则代表连接失败
+                .handler(new LoggingHandler(LogLevel.INFO))
+                //  The timeout period of the connection.
+                //  If this time is exceeded or the connection cannot be established, the connection fails.
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
-                //是否开启 TCP 底层心跳机制
-                .option(ChannelOption.SO_KEEPALIVE, true)
-                //TCP默认开启了 Nagle 算法，该算法的作用是尽可能的发送大数据快，减少网络传输。TCP_NODELAY 参数的作用就是控制是否启用 Nagle 算法。
-                .option(ChannelOption.TCP_NODELAY, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
-                        /*自定义序列化编解码器*/
+                        // If no data is sent to the server within 15 seconds, a heartbeat request is sent
+                        ch.pipeline().addLast(new IdleStateHandler(0, 5, 0, TimeUnit.SECONDS));
+                        /*
+                         config custom serialization codec
+                         */
                         // RpcResponse -> ByteBuf
                         ch.pipeline().addLast(new NettyKryoDecoder(kryoSerializer, RpcResponse.class));
                         // ByteBuf -> RpcRequest
@@ -57,12 +67,19 @@ public final class NettyClient {
                 });
     }
 
+
+    /**
+     * connect server and get the channel ,so that you can send rpc message to server
+     *
+     * @param inetSocketAddress server address
+     * @return the channel
+     */
     @SneakyThrows
     public Channel doConnect(InetSocketAddress inetSocketAddress) {
         CompletableFuture<Channel> completableFuture = new CompletableFuture<>();
         bootstrap.connect(inetSocketAddress).addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
-                log.info("客户端连接成功!");
+                log.info("The client has connected [{}] successful!", inetSocketAddress.toString());
                 completableFuture.complete(future.channel());
             } else {
                 throw new IllegalStateException();
@@ -72,7 +89,6 @@ public final class NettyClient {
     }
 
     public void close() {
-        log.info("call close method");
         eventLoopGroup.shutdownGracefully();
     }
 

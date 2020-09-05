@@ -9,45 +9,43 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 用于获取 Channel 对象
+ * store and get Channel object
  *
  * @author shuang.kou
  * @createTime 2020年05月29日 16:36:00
  */
 @Slf4j
-public final class ChannelProvider {
+public class ChannelProvider {
 
-    private static Map<String, Channel> channels = new ConcurrentHashMap<>();
-    private static NettyClient nettyClient;
+    private final Map<String, Channel> channelMap;
+    private final NettyClient nettyClient;
 
-    static {
+    public ChannelProvider() {
+        channelMap = new ConcurrentHashMap<>();
         nettyClient = SingletonFactory.getInstance(NettyClient.class);
     }
 
-    private ChannelProvider() {
-
-    }
-
-    /**
-     * 最多重试次数
-     */
-
-    public static Channel get(InetSocketAddress inetSocketAddress) {
+    public Channel get(InetSocketAddress inetSocketAddress) {
         String key = inetSocketAddress.toString();
-        // 判断是否有对应地址的连接
-        if (channels.containsKey(key)) {
-            Channel channel = channels.get(key);
-            // 如果有的话，判断连接是否可用，可用的话就直接获取
+        // determine if there is a connection for the corresponding address
+        if (channelMap.containsKey(key)) {
+            Channel channel = channelMap.get(key);
+            // if so, determine if the connection is available, and if so, get it directly
             if (channel != null && channel.isActive()) {
                 return channel;
             } else {
-                channels.remove(key);
+                channelMap.remove(key);
             }
         }
-        // 否则，重新连接获取 Channel
+        // otherwise, reconnect to get the Channel
         Channel channel = nettyClient.doConnect(inetSocketAddress);
-        channels.put(key, channel);
+        channelMap.put(key, channel);
         return channel;
     }
 
+    public void remove(InetSocketAddress inetSocketAddress) {
+        String key = inetSocketAddress.toString();
+        channelMap.remove(key);
+        log.info("Channel map size :[{}]", channelMap.size());
+    }
 }

@@ -1,5 +1,6 @@
 package github.javaguide.factory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,21 +11,23 @@ import java.util.Map;
  * @createTime 2020年06月03日 15:04:00
  */
 public final class SingletonFactory {
-    private static Map<String, Object> objectMap = new HashMap<>();
+    private static final Map<String, Object> OBJECT_MAP = new HashMap<>();
 
     private SingletonFactory() {
     }
 
     public static <T> T getInstance(Class<T> c) {
         String key = c.toString();
-        Object instance = objectMap.get(key);
+        Object instance = OBJECT_MAP.get(key);
         synchronized (c) {
             if (instance == null) {
                 try {
-                    instance = c.newInstance();
-                    objectMap.put(key, instance);
+                    instance = c.getDeclaredConstructor().newInstance();
+                    OBJECT_MAP.put(key, instance);
                 } catch (IllegalAccessException | InstantiationException e) {
                     throw new RuntimeException(e.getMessage(), e);
+                } catch (NoSuchMethodException | InvocationTargetException e) {
+                    e.printStackTrace();
                 }
             }
         }

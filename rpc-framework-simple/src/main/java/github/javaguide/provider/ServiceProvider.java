@@ -1,7 +1,9 @@
 package github.javaguide.provider;
 
+import github.javaguide.entity.RpcServiceProperties;
+
 /**
- * 保存和提供服务实例对象。服务端使用。
+ * store and provide service object.
  *
  * @author shuang.kou
  * @createTime 2020年05月31日 16:52:00
@@ -9,19 +11,26 @@ package github.javaguide.provider;
 public interface ServiceProvider {
 
     /**
-     * 保存服务实例对象和服务实例对象实现的接口类的对应关系
-     *
-     * @param service      服务实例对象
-     * @param serviceClass 服务实例对象实现的接口类
-     * @param <T>          服务接口的类型
+     * @param service              service object
+     * @param serviceClass         the interface class implemented by the service instance object
+     * @param rpcServiceProperties service related attributes
      */
-    <T> void addServiceProvider(T service, Class<T> serviceClass);
+    void addService(Object service, Class<?> serviceClass, RpcServiceProperties rpcServiceProperties);
 
     /**
-     * 获取服务实例对象
-     *
-     * @param serviceName 服务实例对象实现的接口类的类名
-     * @return 服务实例对象
+     * @param rpcServiceProperties service related attributes
+     * @return service object
      */
-    Object getServiceProvider(String serviceName);
+    Object getService(RpcServiceProperties rpcServiceProperties);
+
+    /**
+     * @param service              service object
+     * @param rpcServiceProperties service related attributes
+     */
+    void publishService(Object service, RpcServiceProperties rpcServiceProperties);
+
+    /**
+     * @param service service object
+     */
+    void publishService(Object service);
 }

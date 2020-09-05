@@ -1,19 +1,22 @@
 package github.javaguide.registry;
 
+import github.javaguide.extension.SPI;
+
 import java.net.InetSocketAddress;
 
 /**
- * 服务发现接口
+ * service discovery
  *
  * @author shuang.kou
  * @createTime 2020年06月01日 15:16:00
  */
+@SPI
 public interface ServiceDiscovery {
     /**
-     * 查找服务
+     * lookup service by rpcServiceName
      *
-     * @param serviceName 服务名称
-     * @return 提供服务的地址
+     * @param rpcServiceName rpc service name
+     * @return service address
      */
-    InetSocketAddress lookupService(String serviceName);
+    InetSocketAddress lookupService(String rpcServiceName);
 }

@@ -1,18 +1,21 @@
 package github.javaguide.remoting.transport.socket;
 
 import github.javaguide.config.CustomShutdownHook;
+import github.javaguide.entity.RpcServiceProperties;
+import github.javaguide.factory.SingletonFactory;
 import github.javaguide.provider.ServiceProvider;
 import github.javaguide.provider.ServiceProviderImpl;
-import github.javaguide.registry.ServiceRegistry;
-import github.javaguide.registry.ZkServiceRegistry;
 import github.javaguide.utils.concurrent.threadpool.ThreadPoolFactoryUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
+
+import static github.javaguide.remoting.transport.netty.server.NettyServer.PORT;
 
 /**
  * @author shuang.kou
@@ -22,29 +25,28 @@ import java.util.concurrent.ExecutorService;
 public class SocketRpcServer {
 
     private final ExecutorService threadPool;
-    private final String host;
-    private final int port;
-    private final ServiceRegistry serviceRegistry;
     private final ServiceProvider serviceProvider;
 
 
-    public SocketRpcServer(String host, int port) {
-        this.host = host;
-        this.port = port;
+    public SocketRpcServer() {
         threadPool = ThreadPoolFactoryUtils.createCustomThreadPoolIfAbsent("socket-server-rpc-pool");
-        serviceRegistry = new ZkServiceRegistry();
-        serviceProvider = new ServiceProviderImpl();
+        SingletonFactory.getInstance(ServiceProviderImpl.class);
+        serviceProvider = SingletonFactory.getInstance(ServiceProviderImpl.class);
     }
 
-    public <T> void publishService(T service, Class<T> serviceClass) {
-        serviceProvider.addServiceProvider(service, serviceClass);
-        serviceRegistry.registerService(serviceClass.getCanonicalName(), new InetSocketAddress(host, port));
-        start();
+
+    public void registerService(Object service) {
+        serviceProvider.publishService(service);
     }
 
-    private void start() {
+    public void registerService(Object service, RpcServiceProperties rpcServiceProperties) {
+        serviceProvider.publishService(service, rpcServiceProperties);
+    }
+
+    public void start() {
         try (ServerSocket server = new ServerSocket()) {
-            server.bind(new InetSocketAddress(host, port));
+            String host = InetAddress.getLocalHost().getHostAddress();
+            server.bind(new InetSocketAddress(host, PORT));
             CustomShutdownHook.getCustomShutdownHook().clearAll();
             Socket socket;
             while ((socket = server.accept()) != null) {

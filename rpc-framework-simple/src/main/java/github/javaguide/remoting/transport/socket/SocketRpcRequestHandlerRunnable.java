@@ -1,9 +1,9 @@
 package github.javaguide.remoting.transport.socket;
 
+import github.javaguide.factory.SingletonFactory;
 import github.javaguide.remoting.dto.RpcRequest;
 import github.javaguide.remoting.dto.RpcResponse;
-import github.javaguide.handler.RpcRequestHandler;
-import github.javaguide.factory.SingletonFactory;
+import github.javaguide.remoting.handler.RpcRequestHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -17,8 +17,8 @@ import java.net.Socket;
  */
 @Slf4j
 public class SocketRpcRequestHandlerRunnable implements Runnable {
-    private Socket socket;
-    private RpcRequestHandler rpcRequestHandler;
+    private final Socket socket;
+    private final RpcRequestHandler rpcRequestHandler;
 
 
     public SocketRpcRequestHandlerRunnable(Socket socket) {
